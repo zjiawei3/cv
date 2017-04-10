@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+  <title>Personal Private Chatroom</title>
+
+  <link rel="manifest" href="manifest.json">
+
+</head>
+
+<body>
+
+  <h1>Personal Private Chatroom</h1>
+
+  <p>This page must be accessed using HTTPS or via localhost.</p>
+  <div>
+  <label for="userId">Name: </label>
+  <input type="text" id="userId" />
+  </div>
+  <div>
+  <input type="text" id="deviceId" />
+  <input type="button" id="btnUpdate" onclick="setMessage()" value="click" />
+  </div>
+  <div id="chatHistory">
+  <h2>Message Histories:</h2>
+  </div>
+  <div id="cloudMessages">
+  <h2 id="cloudMessageCount">Last message ID: </h2>
+  <input type="number" id="messageIndex" value=0 />
+  <input type="button" id="btnRetrieve" onclick="getMessage()" value="Retrieve Message" />
+  <p id="retrievedmessage" />
+  </div>
+<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/names.js"></script>
+<script>
+	try{
+	$("#userId").val(last_names[Math.floor(Math.random()*last_names.length)]);
+	}
+	catch(err) {
+		$("#userId").val(Math.floor(Math.random() * 10000000));
+	}
+	
+	
+var notifyMe=function(user, data) {
+  if (Notification.permission !== "granted")
+    Notification.requestPermission();
+  else {
+    var notification = new Notification('Message from '+user, {
+      icon: 'http://cdn.sstatic.net/stackexchange/img/logos/so/so-icon.png',
+      body: data,
+    });
+  }
+}
+	
+  // Initialize Firebase
+  var config = {
+    apiKey: "AIzaSyCnvTumORfzEuW5DW1ZBpR8I36LO5PvJ7c",
+    authDomain: "testnns-1c54e.firebaseapp.com",
+    databaseURL: "https://testnns-1c54e.firebaseio.com",
+    storageBucket: "testnns-1c54e.appspot.com",
+    messagingSenderId: "792150324370"
+  };
+  firebase.initializeApp(config);
+  
+  var database = firebase.database();
+  
+  var userRef = firebase.database().ref('user/data');
+  var arrayRef = firebase.database().ref('user/array');
+  var arrayLastRef = firebase.database().ref('user/array/latest');
+  
+	arrayLastRef.on('value', function(snapshot) {
+	  $("#cloudMessageCount").text("Last message ID: " + (snapshot.val() - 1).toString());
+	});
+  
+	userRef.on('value', function(snapshot) {
+	console.log(snapshot.val());
+	  $("#deviceId").val(snapshot.val().message);
+		$("#chatHistory").append("<p>" + new Date().toLocaleTimeString() + " " + snapshot.val().name + ": " + snapshot.val().message +"</p>");
+		
+		//notifyMe(snapshot.val().name, snapshot.val().message);
+	});
+
+	var setMessage=function(){
+	firebase.database().ref('user/data').set({name:$("#userId").val(), message:$("#deviceId").val()});
+	arrayLastRef.once('value').then(function(snapshot) {
+		var lasteEntry=snapshot.val();
+		arrayLastRef.set(lasteEntry+1);
+		firebase.database().ref('user/array/' + lasteEntry.toString()).set({name:$("#userId").val(), message:$("#deviceId").val()});
+	});
+	};
+	
+	var getMessage=function(){
+		lastMessageId=$("#messageIndex").val();
+		if(!($("#messageIndex").val() > 0)) lastMessageId=1;
+		firebase.database().ref('user/array/' + lastMessageId.toString()).once('value').then(function(snapshot) {
+		if (snapshot.val())
+			$("#retrievedmessage").text(snapshot.val().name + ": " + snapshot.val().message)
+			else
+			$("#retrievedmessage").text("");
+		});
+	}
+</script>
+
+</body>
+</html>
